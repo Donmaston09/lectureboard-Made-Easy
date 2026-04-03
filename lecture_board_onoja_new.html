@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LectureBoard — Digital Classroom Whiteboard</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=DM+Sans:wght@300;400;500&display=swap');
+
+    :root {
+      --board-bg: #1a1a2e;
+      --chalk: #f0f0e8;
+      --chalk-dim: rgba(240, 240, 232, 0.45);
+      --toolbar-bg: rgba(15, 15, 25, 0.92);
+      --toolbar-border: rgba(255, 255, 255, 0.08);
+      --accent: #7c6aff;
+      --accent2: #ff6b6b;
+      --green: #6bffb8;
+      --amber: #ffd166;
+      --ui-text: rgba(255, 255, 255, 0.85);
+      --ui-muted: rgba(255, 255, 255, 0.4);
+      --btn-hover: rgba(255, 255, 255, 0.08);
+      --btn-active: rgba(124, 106, 255, 0.25);
+    }
+
+    .whiteboard-mode {
+      --board-bg: #f9f8f4;
+      --chalk: #1a1a2e;
+      --chalk-dim: rgba(26, 26, 46, 0.35);
+      --toolbar-bg: rgba(245, 244, 240, 0.95);
+      --toolbar-border: rgba(0, 0, 0, 0.1);
+      --ui-text: rgba(0, 0, 0, 0.85);
+      --ui-muted: rgba(0, 0, 0, 0.4);
+      --btn-hover: rgba(0, 0, 0, 0.06);
+      --btn-active: rgba(124, 106, 255, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--board-bg);
+      color: var(--ui-text);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.4s ease;
+    }
+
+    #topbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      background: var(--toolbar-bg);
+      border-bottom: 1px solid var(--toolbar-border);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+      min-height: 54px;
+    }
+
+    .logo {
+      font-family: 'Caveat', cursive;
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+      margin-right: 4px;
+      flex-shrink: 0;
+    }
+
+    .divider {
+      width: 1px;
+      height: 28px;
+      background: var(--toolbar-border);
+      margin: 0 4px;
+      flex-shrink: 0;
+    }
+
+    .tool-group {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .tbtn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: transparent;
+      color: var(--ui-text);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 17px;
+      transition: background 0.15s;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .tbtn:hover {
+      background: var(--btn-hover);
+    }
+
+    .tbtn.active {
+      background: var(--btn-active);
+      color: var(--accent);
+    }
+
+    .tbtn[title]:hover::after {
+      content: attr(title);
+      position: absolute;
+      top: 42px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      font-size: 11px;
+      padding: 3px 7px;
+      border-radius: 5px;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 999;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    .tbtn-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 10px;
+      height: 36px;
+      border: none;
+      background: transparent;
+      color: var(--ui-text);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      transition: background 0.15s;
+      flex-shrink: 0;
+    }
+
+    .tbtn-label:hover {
+      background: var(--btn-hover);
+    }
+
+    .tbtn-label.active {
+      background: var(--btn-active);
+      color: var(--accent);
+    }
+
+    #color-strip {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .color-swatch {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: transform 0.15s, border-color 0.15s;
+      flex-shrink: 0;
+    }
+
+    .color-swatch:hover {
+      transform: scale(1.2);
+    }
+
+    .color-swatch.selected {
+      border-color: var(--ui-text);
+      transform: scale(1.15);
+    }
+
+    #size-slider {
+      -webkit-appearance: none;
+      width: 72px;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--toolbar-border);
+      outline: none;
+      cursor: pointer;
+    }
+
+    #size-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+
+    #voice-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 12px;
+      height: 36px;
+      border: 1.5px solid var(--toolbar-border);
+      background: transparent;
+      color: var(--ui-text);
+      border-radius: 18px;
+      cursor: pointer;
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    #voice-btn:hover {
+      border-color: var(--accent);
+    }
+
+    #voice-btn.listening {
+      border-color: var(--accent2);
+      background: rgba(255, 107, 107, 0.15);
+      color: var(--accent2);
+      animation: pulse-ring 1.2s infinite;
+    }
+
+    @keyframes pulse-ring {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.3);
+      }
+
+      50% {
+        box-shadow: 0 0 0 6px rgba(255, 107, 107, 0);
+      }
+    }
+
+    #mic-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    #voice-btn.listening #mic-dot {
+      animation: blink 0.8s infinite;
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0.2
+      }
+    }
+
+    #canvas-wrap {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      cursor: crosshair;
+    }
+
+    #board {
+      position: absolute;
+      top: 0;
+      left: 0;
+      touch-action: none;
+    }
+
+    #overlay-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+
+    #voice-display {
+      position: absolute;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.72);
+      color: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      padding: 10px 20px;
+      border-radius: 22px;
+      max-width: 80vw;
+      text-align: center;
+      display: none;
+      pointer-events: none;
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      z-index: 50;
+    }
+
+    #voice-display.visible {
+      display: block;
+    }
+
+    #status-bar {
+      position: absolute;
+      top: 10px;
+      right: 14px;
+      font-size: 12px;
+      color: var(--ui-muted);
+      pointer-events: none;
+      z-index: 50;
+    }
+
+    #writing-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+
+    .text-input-overlay {
+      position: absolute;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: 'Caveat', cursive;
+      font-size: 28px;
+      color: var(--current-color, #f0f0e8);
+      caret-color: currentColor;
+      resize: none;
+      min-width: 120px;
+      min-height: 40px;
+      z-index: 200;
+      padding: 2px 4px;
+    }
+
+    #page-indicator {
+      position: absolute;
+      bottom: 10px;
+      right: 14px;
+      font-size: 12px;
+      color: var(--ui-muted);
+      pointer-events: none;
+      z-index: 50;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    #ai-writing-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 30;
+      font-family: 'Caveat', cursive;
+      font-size: 32px;
+      line-height: 1.5;
+      color: var(--chalk);
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      padding: 0;
+    }
+
+    .ai-char {
+      display: inline;
+      opacity: 0;
+      animation: charAppear 0.06s forwards;
+    }
+
+    @keyframes charAppear {
+      from {
+        opacity: 0;
+        transform: translateY(3px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    #eraser-cursor {
+      position: absolute;
+      pointer-events: none;
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      border-radius: 50%;
+      display: none;
+      z-index: 100;
+      transform: translate(-50%, -50%);
+    }
+
+    .modal-bg {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-bg.open {
+      display: flex;
+    }
+
+    .modal {
+      background: #1e1e30;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 28px 32px;
+      max-width: 420px;
+      width: 90vw;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    .whiteboard-mode .modal {
+      background: #f5f4f0;
+      border-color: rgba(0, 0, 0, 0.12);
+    }
+
+    .modal h3 {
+      font-size: 18px;
+      font-weight: 500;
+      margin-bottom: 16px;
+    }
+
+    .modal p {
+      font-size: 14px;
+      color: var(--ui-muted);
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    .modal-btns {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .mbtn {
+      padding: 8px 18px;
+      border-radius: 8px;
+      border: 1px solid var(--toolbar-border);
+      background: transparent;
+      color: var(--ui-text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .mbtn:hover {
+      background: var(--btn-hover);
+    }
+
+    .mbtn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .mbtn.primary:hover {
+      background: #6a57f0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="topbar">
+    <span class="logo">✎ LectureBoard</span>
+    <div class="divider"></div>
+
+    <div class="tool-group">
+      <button class="tbtn active" id="tool-pen" title="Pen (P)" onclick="setTool('pen')">✏️</button>
+      <button class="tbtn" id="tool-chalk" title="Chalk brush (C)" onclick="setTool('chalk')">🖊️</button>
+      <button class="tbtn" id="tool-marker" title="Marker (M)" onclick="setTool('marker')">🖍️</button>
+      <button class="tbtn" id="tool-eraser" title="Eraser (E)" onclick="setTool('eraser')">◻️</button>
+      <button class="tbtn" id="tool-text" title="Text (T)" onclick="setTool('text')">T</button>
+      <button class="tbtn" id="tool-line" title="Line (L)" onclick="setTool('line')">╱</button>
+      <button class="tbtn" id="tool-arrow" title="Arrow (A)" onclick="setTool('arrow')">→</button>
+      <button class="tbtn" id="tool-rect" title="Rectangle (R)" onclick="setTool('rect')">▭</button>
+      <button class="tbtn" id="tool-circle" title="Circle (O)" onclick="setTool('circle')">○</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div id="color-strip">
+      <div class="color-swatch selected" style="background:#f0f0e8" data-color="#f0f0e8" onclick="setColor(this)"
+        title="Chalk white"></div>
+      <div class="color-swatch" style="background:#ff6b6b" data-color="#ff6b6b" onclick="setColor(this)" title="Red">
+      </div>
+      <div class="color-swatch" style="background:#ffd166" data-color="#ffd166" onclick="setColor(this)" title="Amber">
+      </div>
+      <div class="color-swatch" style="background:#6bffb8" data-color="#6bffb8" onclick="setColor(this)" title="Green">
+      </div>
+      <div class="color-swatch" style="background:#6bb5ff" data-color="#6bb5ff" onclick="setColor(this)" title="Blue">
+      </div>
+      <div class="color-swatch" style="background:#c96bff" data-color="#c96bff" onclick="setColor(this)" title="Purple">
+      </div>
+      <div class="color-swatch" style="background:#ff9f43" data-color="#ff9f43" onclick="setColor(this)" title="Orange">
+      </div>
+      <input type="color" id="custom-color" value="#ffffff" title="Custom color"
+        style="width:22px;height:22px;border-radius:50%;border:2px solid var(--toolbar-border);cursor:pointer;padding:0;background:none;"
+        onchange="setCustomColor(this.value)">
+    </div>
+
+    <div class="divider"></div>
+    <input type="range" id="size-slider" min="1" max="40" value="4" title="Brush size"
+      oninput="setBrushSize(this.value)">
+
+    <div class="divider"></div>
+
+    <button class="tbtn-label" id="board-mode-btn" onclick="toggleBoardMode()" title="Toggle board mode">🖤
+      Blackboard</button>
+
+    <div class="divider"></div>
+
+    <button class="tbtn" title="Undo (Ctrl+Z)" onclick="undo()">↩</button>
+    <button class="tbtn" title="Redo (Ctrl+Y)" onclick="redo()">↪</button>
+    <button class="tbtn" title="Clear board" onclick="showClearModal()">🗑</button>
+    <button class="tbtn" title="Save / Download" onclick="saveBoard()">💾</button>
+    <button class="tbtn" title="New page" onclick="newPage()">+</button>
+
+    <div class="divider"></div>
+
+    <button id="voice-btn" onclick="toggleVoice()">
+      <div id="mic-dot"></div>
+      <span id="voice-label">🎙 Voice</span>
+    </button>
+
+    <div class="divider"></div>
+    <button class="tbtn-label" onclick="showDonateModal()" title="Support this project"
+      style="color:#ffd166;border:1px solid rgba(255,209,102,0.3);border-radius:18px;padding:0 12px;">
+      ❤️ Support
+    </button>
+    <button class="tbtn" onclick="showAboutModal()" title="About LectureBoard">ℹ️</button>
+  </div>
+
+  <div id="canvas-wrap">
+    <canvas id="board"></canvas>
+    <canvas id="overlay-canvas"></canvas>
+    <div id="eraser-cursor"></div>
+    <div id="voice-display"></div>
+    <div id="page-indicator">Page 1 / 1</div>
+    <div id="status-bar"></div>
+  </div>
+
+  <div class="modal-bg" id="clear-modal">
+    <div class="modal">
+      <h3>Clear the board?</h3>
+      <p>This will erase everything on the current page. This action cannot be undone once confirmed.</p>
+      <div class="modal-btns">
+        <button class="mbtn" onclick="hideClearModal()">Cancel</button>
+        <button class="mbtn primary" onclick="clearBoard()">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="about-modal">
+    <div class="modal" style="max-width:480px;">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+        <div
+          style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#7c6aff,#c96bff);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">
+          ✎</div>
+        <div>
+          <h3 style="margin-bottom:2px;">LectureBoard</h3>
+          <p style="margin:0;font-size:13px;color:var(--ui-muted);">Digital Classroom Whiteboard</p>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--toolbar-border);padding-top:16px;margin-bottom:16px;">
+        <p style="font-size:14px;line-height:1.8;margin-bottom:4px;"><strong style="font-weight:500;">Created
+            by:</strong> Anthony Onoja</p>
+        <p style="font-size:14px;line-height:1.8;margin-bottom:4px;">🏫 School of Health Sciences, University of Surrey,
+          UK</p>
+        <p style="font-size:14px;line-height:1.8;">✉️ <a href="mailto:a.onoja@surrey.ac.uk"
+            style="color:#7c6aff;text-decoration:none;">a.onoja@surrey.ac.uk</a></p>
+      </div>
+      <div
+        style="background:rgba(124,106,255,0.1);border:1px solid rgba(124,106,255,0.2);border-radius:10px;padding:14px 16px;margin-bottom:20px;">
+        <p style="font-size:13px;line-height:1.7;color:var(--ui-muted);margin:0;">LectureBoard was built to make remote
+          teaching more natural and engaging — combining freehand drawing, chalk aesthetics, and voice-driven
+          handwriting in one seamless tool.</p>
+      </div>
+      <div class="modal-btns">
+        <button class="mbtn" onclick="hideAboutModal()">Close</button>
+        <button class="mbtn primary" onclick="hideAboutModal();showDonateModal()">❤️ Support this work</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="donate-modal">
+    <div class="modal" style="max-width:500px;">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:36px;margin-bottom:10px;">🌍</div>
+        <h3 style="font-size:20px;margin-bottom:10px;">Support This Work</h3>
+        <p style="font-size:14px;line-height:1.7;margin:0;color:var(--ui-muted);">I am raising funds to bring <strong
+            style="font-weight:500;color:#ffd166;">Data Science &amp; AI education</strong> to Internally Displaced
+          Persons (IDP) camps in Nigeria — giving life-changing skills to those who need it most.</p>
+      </div>
+      <div
+        style="background:rgba(255,209,102,0.08);border:1px solid rgba(255,209,102,0.2);border-radius:12px;padding:14px 18px;margin-bottom:20px;">
+        <p style="font-size:13px;color:var(--ui-muted);margin-bottom:8px;">Your donation helps fund:</p>
+        <div style="font-size:13px;line-height:2;">
+          📡 Devices &amp; internet connectivity in IDP camps<br>
+          📚 Training materials and curriculum development<br>
+          👩‍🏫 Local instructor training &amp; community mentors<br>
+          🎓 Scholarships for displaced youth in tech skills
+        </div>
+      </div>
+      <p style="font-size:12px;text-align:center;color:var(--ui-muted);margin-bottom:12px;">Choose your preferred way to
+        donate:</p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+        <a href="https://paypal.me/Onoja412" target="_blank"
+          style="display:flex;align-items:center;gap:14px;padding:14px 18px;background:#003087;border-radius:12px;text-decoration:none;color:#fff;transition:opacity 0.2s;"
+          onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+          <span style="font-size:20px;font-weight:bold;font-family:Arial;letter-spacing:-1px;"><span
+              style="color:#009cde;">Pay</span><span style="color:#80c7f5;">Pal</span></span>
+          <div>
+            <div style="font-size:14px;font-weight:500;">Donate via PayPal</div>
+            <div style="font-size:12px;opacity:0.7;">Fast, secure — no account needed</div>
+          </div>
+          <span style="margin-left:auto;">→</span>
+        </a>
+        <a href="mailto:a.onoja@surrey.ac.uk?subject=LectureBoard%20Donation%20Enquiry"
+          style="display:flex;align-items:center;gap:12px;padding:12px 18px;background:rgba(255,255,255,0.05);border:1px solid var(--toolbar-border);border-radius:12px;text-decoration:none;color:var(--ui-muted);font-size:13px;transition:background 0.2s;"
+          onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+          onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+          ✉️ <span>Contact Anthony: <strong style="font-weight:500;color:#7c6aff;">a.onoja@surrey.ac.uk</strong></span>
+        </a>
+      </div>
+      <p style="font-size:11px;text-align:center;color:var(--ui-muted);margin-bottom:16px;">Every contribution, no
+        matter how small, makes a real difference. Thank you 🙏</p>
+      <div class="modal-btns" style="justify-content:center;">
+        <button class="mbtn" onclick="hideDonateModal()">Maybe later</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="footer-bar"
+    style="display:flex;align-items:center;justify-content:space-between;padding:5px 16px;background:rgba(10,10,20,0.75);border-top:1px solid rgba(255,255,255,0.06);font-size:11px;color:rgba(255,255,255,0.35);font-family:'DM Sans',sans-serif;flex-shrink:0;gap:8px;flex-wrap:wrap;">
+    <span>✎ <strong style="font-weight:500;color:rgba(255,255,255,0.55);">LectureBoard</strong> &nbsp;·&nbsp; Anthony
+      Onoja &nbsp;·&nbsp; School of Health Sciences, University of Surrey, UK &nbsp;·&nbsp; <a
+        href="mailto:a.onoja@surrey.ac.uk" style="color:#7c6aff;text-decoration:none;">a.onoja@surrey.ac.uk</a></span>
+    <button onclick="showDonateModal()"
+      style="background:none;border:none;cursor:pointer;font-size:11px;color:#ffd166;font-family:'DM Sans',sans-serif;padding:0;">❤️
+      Support: AI education to IDP camps in Nigeria</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('board');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay-canvas');
+    const octx = overlay.getContext('2d');
+    const wrap = document.getElementById('canvas-wrap');
+    const voiceDisplay = document.getElementById('voice-display');
+    const eraserCursor = document.getElementById('eraser-cursor');
+
+    let currentTool = 'pen';
+    let currentColor = '#f0f0e8';
+    let brushSize = 4;
+    let isDrawing = false;
+    let lastX = 0, lastY = 0;
+    let isBlackboard = true;
+    let voiceActive = false;
+    let recognition = null;
+    let undoStack = [];
+    let redoStack = [];
+    let currentPage = 0;
+    let pages = [null];
+    let shapeStart = null;
+    let aiWriteX = 60, aiWriteY = 100;
+    let aiLineHeight = 48;
+    let aiCurrentX = 60;
+    let aiCurrentY = 100;
+    let activeTextarea = null;
+
+    function resize() {
+      const w = wrap.clientWidth;
+      const h = wrap.clientHeight;
+      const prev = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      canvas.width = w;
+      canvas.height = h;
+      overlay.width = w;
+      overlay.height = h;
+      ctx.putImageData(prev, 0, 0);
+      fillBackground();
+    }
+
+    function fillBackground() {
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-over';
+      ctx.fillStyle = isBlackboard ? '#1a1a2e' : '#f9f8f4';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+    }
+
+    function saveState() {
+      undoStack.push(canvas.toDataURL());
+      if (undoStack.length > 50) undoStack.shift();
+      redoStack = [];
+    }
+
+    function undo() {
+      if (!undoStack.length) return;
+      redoStack.push(canvas.toDataURL());
+      const img = new Image();
+      img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); };
+      img.src = undoStack.pop();
+    }
+
+    function redo() {
+      if (!redoStack.length) return;
+      undoStack.push(canvas.toDataURL());
+      const img = new Image();
+      img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); };
+      img.src = redoStack.pop();
+    }
+
+    function getPos(e) {
+      const r = canvas.getBoundingClientRect();
+      const src = e.touches ? e.touches[0] : e;
+      return [src.clientX - r.left, src.clientY - r.top];
+    }
+
+    function setTool(t) {
+      currentTool = t;
+      document.querySelectorAll('.tbtn').forEach(b => b.classList.remove('active'));
+      const el = document.getElementById('tool-' + t);
+      if (el) el.classList.add('active');
+      canvas.style.cursor = t === 'eraser' ? 'none' : t === 'text' ? 'text' : 'crosshair';
+      eraserCursor.style.display = 'none';
+    }
+
+    function setColor(el) {
+      document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+      el.classList.add('selected');
+      currentColor = el.dataset.color;
+    }
+
+    function setCustomColor(c) {
+      currentColor = c;
+      document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+    }
+
+    function setBrushSize(v) {
+      brushSize = parseInt(v);
+    }
+
+    function toggleBoardMode() {
+      isBlackboard = !isBlackboard;
+      document.body.classList.toggle('whiteboard-mode', !isBlackboard);
+      const btn = document.getElementById('board-mode-btn');
+      btn.textContent = isBlackboard ? '🖤 Blackboard' : '🤍 Whiteboard';
+      const swatches = document.querySelectorAll('.color-swatch');
+      const firstSwatch = swatches[0];
+      if (isBlackboard) {
+        firstSwatch.style.background = '#f0f0e8';
+        firstSwatch.dataset.color = '#f0f0e8';
+        if (currentColor === '#1a1a2e') { currentColor = '#f0f0e8'; firstSwatch.classList.add('selected'); }
+      } else {
+        firstSwatch.style.background = '#1a1a2e';
+        firstSwatch.dataset.color = '#1a1a2e';
+        if (currentColor === '#f0f0e8') { currentColor = '#1a1a2e'; firstSwatch.classList.add('selected'); }
+      }
+      saveState();
+      fillBackground();
+    }
+
+    function applyChalkTexture(ctx, x, y, size) {
+      const spread = size * 0.6;
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.arc(
+          x + (Math.random() - 0.5) * spread,
+          y + (Math.random() - 0.5) * spread,
+          size * (0.3 + Math.random() * 0.5),
+          0, Math.PI * 2
+        );
+        ctx.globalAlpha = 0.3 + Math.random() * 0.5;
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawStroke(x, y) {
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = currentColor;
+      ctx.fillStyle = currentColor;
+
+      if (currentTool === 'pen') {
+        ctx.lineWidth = brushSize;
+        ctx.globalAlpha = 0.92;
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.quadraticCurveTo(
+          (lastX + x) / 2, (lastY + y) / 2,
+          x, y
+        );
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else if (currentTool === 'chalk') {
+        ctx.globalAlpha = 1;
+        for (let i = 0; i <= 1; i += 0.2) {
+          const ix = lastX + (x - lastX) * i;
+          const iy = lastY + (y - lastY) * i;
+          applyChalkTexture(ctx, ix, iy, brushSize);
+        }
+      } else if (currentTool === 'marker') {
+        ctx.lineWidth = brushSize * 2.5;
+        ctx.globalAlpha = 0.55;
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else if (currentTool === 'eraser') {
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.lineWidth = brushSize * 4;
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.globalCompositeOperation = 'source-over';
+        fillBackground();
+      }
+    }
+
+    function startDraw(e) {
+      if (activeTextarea) return;
+      const [x, y] = getPos(e);
+
+      if (currentTool === 'text') {
+        createTextInput(x, y);
+        return;
+      }
+
+      if (['line', 'arrow', 'rect', 'circle'].includes(currentTool)) {
+        shapeStart = [x, y];
+        saveState();
+        isDrawing = true;
+        lastX = x; lastY = y;
+        return;
+      }
+
+      saveState();
+      isDrawing = true;
+      [lastX, lastY] = [x, y];
+
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+      ctx.fillStyle = currentColor;
+      if (currentTool === 'eraser') {
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+        fillBackground();
+      } else {
+        ctx.fill();
+      }
+    }
+
+    function draw(e) {
+      e.preventDefault();
+      const [x, y] = getPos(e);
+
+      if (currentTool === 'eraser') {
+        eraserCursor.style.display = 'block';
+        const size = brushSize * 4;
+        eraserCursor.style.width = size + 'px';
+        eraserCursor.style.height = size + 'px';
+        eraserCursor.style.left = x + 'px';
+        eraserCursor.style.top = y + 'px';
+      }
+
+      if (!isDrawing) return;
+
+      if (['line', 'arrow', 'rect', 'circle'].includes(currentTool) && shapeStart) {
+        octx.clearRect(0, 0, overlay.width, overlay.height);
+        octx.strokeStyle = currentColor;
+        octx.fillStyle = currentColor + '33';
+        octx.lineWidth = brushSize;
+        octx.lineCap = 'round';
+        octx.lineJoin = 'round';
+        const [sx, sy] = shapeStart;
+
+        if (currentTool === 'line') {
+          octx.beginPath();
+          octx.moveTo(sx, sy);
+          octx.lineTo(x, y);
+          octx.stroke();
+        } else if (currentTool === 'arrow') {
+          drawArrowOnCtx(octx, sx, sy, x, y);
+        } else if (currentTool === 'rect') {
+          octx.beginPath();
+          octx.rect(sx, sy, x - sx, y - sy);
+          octx.stroke();
+          octx.fill();
+        } else if (currentTool === 'circle') {
+          const rx = Math.abs(x - sx) / 2, ry = Math.abs(y - sy) / 2;
+          octx.beginPath();
+          octx.ellipse(sx + (x - sx) / 2, sy + (y - sy) / 2, rx, ry, 0, 0, Math.PI * 2);
+          octx.stroke();
+          octx.fill();
+        }
+        return;
+      }
+
+      drawStroke(x, y);
+      [lastX, lastY] = [x, y];
+    }
+
+    function endDraw(e) {
+      if (!isDrawing) return;
+      isDrawing = false;
+
+      if (['line', 'arrow', 'rect', 'circle'].includes(currentTool) && shapeStart) {
+        const [x, y] = getPos(e.changedTouches ? e : e);
+        octx.clearRect(0, 0, overlay.width, overlay.height);
+        ctx.strokeStyle = currentColor;
+        ctx.fillStyle = currentColor + '33';
+        ctx.lineWidth = brushSize;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        const [sx, sy] = shapeStart;
+
+        if (currentTool === 'line') {
+          ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(x, y); ctx.stroke();
+        } else if (currentTool === 'arrow') {
+          drawArrowOnCtx(ctx, sx, sy, x, y);
+        } else if (currentTool === 'rect') {
+          ctx.beginPath(); ctx.rect(sx, sy, x - sx, y - sy); ctx.stroke(); ctx.fill();
+        } else if (currentTool === 'circle') {
+          const rx = Math.abs(x - sx) / 2, ry = Math.abs(y - sy) / 2;
+          ctx.beginPath(); ctx.ellipse(sx + (x - sx) / 2, sy + (y - sy) / 2, rx, ry, 0, 0, Math.PI * 2); ctx.stroke(); ctx.fill();
+        }
+        shapeStart = null;
+      }
+      fillBackground();
+    }
+
+    function drawArrowOnCtx(c, x1, y1, x2, y2) {
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      const len = 14 + brushSize;
+      c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+      c.beginPath();
+      c.moveTo(x2, y2);
+      c.lineTo(x2 - len * Math.cos(angle - 0.4), y2 - len * Math.sin(angle - 0.4));
+      c.lineTo(x2 - len * Math.cos(angle + 0.4), y2 - len * Math.sin(angle + 0.4));
+      c.closePath();
+      c.fill();
+    }
+
+    function createTextInput(x, y) {
+      if (activeTextarea) { activeTextarea.remove(); activeTextarea = null; }
+      const ta = document.createElement('textarea');
+      ta.className = 'text-input-overlay';
+      ta.style.left = x + 'px';
+      ta.style.top = y + 'px';
+      ta.style.color = currentColor;
+      ta.style.fontSize = Math.max(20, brushSize * 6) + 'px';
+      ta.rows = 1;
+      ta.placeholder = 'Type here…';
+      wrap.appendChild(ta);
+      ta.focus();
+      activeTextarea = ta;
+
+      ta.addEventListener('input', () => {
+        ta.style.height = 'auto';
+        ta.style.height = ta.scrollHeight + 'px';
+        ta.style.width = Math.max(120, ta.scrollWidth + 10) + 'px';
+      });
+
+      ta.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape') commitText(ta);
+      });
+      ta.addEventListener('blur', () => commitText(ta));
+    }
+
+    function commitText(ta) {
+      if (!ta || !ta.parentNode) return;
+      const text = ta.value.trim();
+      if (text) {
+        saveState();
+        ctx.font = ta.style.fontSize + ' "Caveat", cursive';
+        ctx.fillStyle = ta.style.color;
+        ctx.globalAlpha = 0.95;
+        const x = parseInt(ta.style.left);
+        const y = parseInt(ta.style.top);
+        const lines = text.split('\n');
+        const lh = parseInt(ta.style.fontSize) * 1.3;
+        lines.forEach((line, i) => ctx.fillText(line, x, y + parseInt(ta.style.fontSize) + i * lh));
+        ctx.globalAlpha = 1;
+        fillBackground();
+      }
+      ta.remove();
+      activeTextarea = null;
+    }
+
+    function showStatus(msg, dur = 2000) {
+      const s = document.getElementById('status-bar');
+      s.textContent = msg;
+      setTimeout(() => s.textContent = '', dur);
+    }
+
+    function showClearModal() { document.getElementById('clear-modal').classList.add('open'); }
+    function hideClearModal() { document.getElementById('clear-modal').classList.remove('open'); }
+    function showAboutModal() { document.getElementById('about-modal').classList.add('open'); }
+    function hideAboutModal() { document.getElementById('about-modal').classList.remove('open'); }
+    function showDonateModal() { document.getElementById('donate-modal').classList.add('open'); }
+    function hideDonateModal() { document.getElementById('donate-modal').classList.remove('open'); }
+    document.getElementById('about-modal').addEventListener('click', function (e) { if (e.target === this) hideAboutModal(); });
+    document.getElementById('donate-modal').addEventListener('click', function (e) { if (e.target === this) hideDonateModal(); });
+    document.getElementById('clear-modal').addEventListener('click', function (e) { if (e.target === this) hideClearModal(); });
+
+    function clearBoard() {
+      saveState();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      fillBackground();
+      aiCurrentX = 60; aiCurrentY = 100;
+      hideClearModal();
+    }
+
+    function saveBoard() {
+      const tmp = document.createElement('canvas');
+      tmp.width = canvas.width; tmp.height = canvas.height;
+      const tc = tmp.getContext('2d');
+      tc.fillStyle = isBlackboard ? '#1a1a2e' : '#f9f8f4';
+      tc.fillRect(0, 0, tmp.width, tmp.height);
+      tc.drawImage(canvas, 0, 0);
+      const a = document.createElement('a');
+      a.href = tmp.toDataURL('image/png');
+      a.download = 'lectureboard-' + Date.now() + '.png';
+      a.click();
+      showStatus('Board saved ✓');
+    }
+
+    function newPage() {
+      pages[currentPage] = canvas.toDataURL();
+      pages.push(null);
+      currentPage = pages.length - 1;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      fillBackground();
+      aiCurrentX = 60; aiCurrentY = 100;
+      document.getElementById('page-indicator').textContent = `Page ${currentPage + 1} / ${pages.length}`;
+      showStatus('New page created');
+    }
+
+    function toggleVoice() {
+      if (!voiceActive) startVoice(); else stopVoice();
+    }
+
+    function startVoice() {
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRec) {
+        showVoiceDisplay('⚠ Speech recognition not supported in this browser. Try Chrome or Edge.', 4000);
+        return;
+      }
+      recognition = new SpeechRec();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      voiceActive = true;
+      const btn = document.getElementById('voice-btn');
+      btn.classList.add('listening');
+      document.getElementById('voice-label').textContent = '■ Stop';
+      showVoiceDisplay('🎙 Listening… speak to write on the board', 0);
+
+      let finalText = '';
+      let writeTimeout;
+
+      recognition.onresult = (e) => {
+        let interim = '';
+        let final = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const t = e.results[i][0].transcript;
+          if (e.results[i].isFinal) final += t;
+          else interim += t;
+        }
+        showVoiceDisplay((final || interim || '').trim() ? `"${(final || interim).trim()}"` : '🎙 Listening…', 0);
+
+        if (final.trim()) {
+          clearTimeout(writeTimeout);
+          const cleaned = processVoiceCommand(final.trim());
+          if (cleaned) {
+            writeTimeout = setTimeout(() => {
+              writeOnBoard(cleaned + ' ');
+              finalText = '';
+            }, 300);
+          }
+        }
+      };
+
+      recognition.onerror = (e) => {
+        if (e.error !== 'no-speech') showVoiceDisplay('⚠ Mic error: ' + e.error, 3000);
+      };
+
+      recognition.onend = () => {
+        if (voiceActive) recognition.start();
+      };
+
+      recognition.start();
+    }
+
+    function processVoiceCommand(text) {
+      const t = text.toLowerCase().trim();
+      if (t === 'new line' || t === 'next line') {
+        aiCurrentX = 60;
+        aiCurrentY += aiLineHeight;
+        return null;
+      }
+      if (t === 'clear board' || t === 'erase board') { clearBoard(); return null; }
+      if (t === 'undo') { undo(); return null; }
+      if (t === 'new page') { newPage(); return null; }
+      if (t.startsWith('color ')) {
+        const c = t.replace('color ', '');
+        const map = { red: '#ff6b6b', blue: '#6bb5ff', green: '#6bffb8', yellow: '#ffd166', amber: '#ffd166', purple: '#c96bff', orange: '#ff9f43', white: '#f0f0e8', black: '#1a1a2e' };
+        if (map[c]) { currentColor = map[c]; showStatus('Color: ' + c); return null; }
+      }
+      return text;
+    }
+
+    function stopVoice() {
+      voiceActive = false;
+      if (recognition) { recognition.onend = null; recognition.stop(); recognition = null; }
+      const btn = document.getElementById('voice-btn');
+      btn.classList.remove('listening');
+      document.getElementById('voice-label').textContent = '🎙 Voice';
+      voiceDisplay.classList.remove('visible');
+    }
+
+    function showVoiceDisplay(msg, dur) {
+      voiceDisplay.textContent = msg;
+      voiceDisplay.classList.add('visible');
+      if (dur > 0) setTimeout(() => voiceDisplay.classList.remove('visible'), dur);
+    }
+
+    let writeQueue = [];
+    let isWriting = false;
+
+    function writeOnBoard(text) {
+      writeQueue.push(...text.split(''));
+      if (!isWriting) processWriteQueue();
+    }
+
+    function processWriteQueue() {
+      if (!writeQueue.length) { isWriting = false; return; }
+      isWriting = true;
+      const ch = writeQueue.shift();
+
+      if (ch === '\n' || aiCurrentX > canvas.width - 80) {
+        aiCurrentX = 60;
+        aiCurrentY += aiLineHeight;
+      }
+      if (aiCurrentY > canvas.height - 40) {
+        aiCurrentX = 60;
+        aiCurrentY = 100;
+      }
+
+      renderHandwrittenChar(ch, aiCurrentX, aiCurrentY, () => {
+        aiCurrentX += measureChar(ch);
+        setTimeout(processWriteQueue, 35 + Math.random() * 30);
+      });
+    }
+
+    function measureChar(ch) {
+      ctx.font = '32px "Caveat", cursive';
+      if (ch === ' ') return 12;
+      return ctx.measureText(ch).width + 1.5;
+    }
+
+    function renderHandwrittenChar(ch, x, y, cb) {
+      if (ch === ' ') { cb(); return; }
+      ctx.save();
+      ctx.font = '32px "Caveat", cursive';
+      ctx.fillStyle = currentColor;
+      ctx.globalAlpha = 0.92;
+
+      const jx = (Math.random() - 0.5) * 2;
+      const jy = (Math.random() - 0.5) * 2;
+      const angle = (Math.random() - 0.5) * 0.04;
+
+      ctx.translate(x + jx, y + jy);
+      ctx.rotate(angle);
+      ctx.fillText(ch, 0, 0);
+      ctx.restore();
+      fillBackground();
+      cb();
+    }
+
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', endDraw);
+    canvas.addEventListener('mouseleave', () => {
+      isDrawing = false;
+      eraserCursor.style.display = 'none';
+    });
+    canvas.addEventListener('touchstart', e => { e.preventDefault(); startDraw(e); }, { passive: false });
+    canvas.addEventListener('touchmove', e => { e.preventDefault(); draw(e); }, { passive: false });
+    canvas.addEventListener('touchend', e => { endDraw(e); });
+
+    document.addEventListener('keydown', (e) => {
+      if (activeTextarea) return;
+      if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
+      if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
+      if (!e.ctrlKey && !e.metaKey) {
+        const map = { p: 'pen', c: 'chalk', m: 'marker', e: 'eraser', t: 'text', l: 'line', a: 'arrow', r: 'rect', o: 'circle' };
+        if (map[e.key]) setTool(map[e.key]);
+      }
+    });
+
+    window.addEventListener('resize', resize);
+    resize();
+    fillBackground();
+    showStatus('Welcome! Draw freely or use 🎙 Voice to write on the board.');
+
+    setTimeout(() => {
+      ctx.save();
+      ctx.font = '22px "Caveat", cursive';
+      ctx.fillStyle = isBlackboard ? 'rgba(240,240,232,0.18)' : 'rgba(26,26,46,0.12)';
+      ctx.fillText('Start writing, drawing, or click 🎙 Voice to write by speaking…', 60, canvas.height / 2 + 12);
+      ctx.restore();
+    }, 500);
+  </script>
+</body>
+
+</html>
