@@ -531,7 +531,15 @@
     <button class="tbtn" title="Redo (Ctrl+Y)" onclick="redo()">↪</button>
     <button class="tbtn" title="Clear board" onclick="showClearModal()">🗑</button>
     <button class="tbtn" title="Save / Download" onclick="saveBoard()">💾</button>
-    <button class="tbtn" title="New page" onclick="newPage()">+</button>
+
+    <div class="divider"></div>
+
+    <div class="tool-group">
+      <button class="tbtn" title="Previous page" onclick="prevPage()">◀</button>
+      <span id="page-indicator-toolbar" style="font-size: 13px; color: var(--ui-text); margin: 0 4px; font-variant-numeric: tabular-nums; cursor: default; min-width: 32px; text-align: center;">1/1</span>
+      <button class="tbtn" title="Next page" onclick="nextPage()">▶</button>
+      <button class="tbtn" title="New page" onclick="newPage()">+</button>
+    </div>
 
     <div class="divider"></div>
 
@@ -1049,14 +1057,55 @@
       showStatus('Board saved ✓');
     }
 
+    function updatePageIndicator() {
+      const text = `Page ${currentPage + 1} / ${pages.length}`;
+      const ind = document.getElementById('page-indicator');
+      if (ind) ind.textContent = text;
+      const tbInd = document.getElementById('page-indicator-toolbar');
+      if (tbInd) tbInd.textContent = `${currentPage + 1}/${pages.length}`;
+    }
+
+    function loadPage(index) {
+      if(index < 0 || index >= pages.length) return;
+      pages[currentPage] = canvas.toDataURL();
+      currentPage = index;
+      
+      undoStack = [];
+      redoStack = [];
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      fillBackground();
+      if (pages[currentPage]) {
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0);
+        };
+        img.src = pages[currentPage];
+      }
+      aiCurrentX = 60; aiCurrentY = 100;
+      updatePageIndicator();
+    }
+
+    function prevPage() {
+      if(currentPage > 0) loadPage(currentPage - 1);
+    }
+
+    function nextPage() {
+      if(currentPage < pages.length - 1) loadPage(currentPage + 1);
+    }
+
     function newPage() {
       pages[currentPage] = canvas.toDataURL();
       pages.push(null);
       currentPage = pages.length - 1;
+      
+      undoStack = [];
+      redoStack = [];
+      
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       fillBackground();
       aiCurrentX = 60; aiCurrentY = 100;
-      document.getElementById('page-indicator').textContent = `Page ${currentPage + 1} / ${pages.length}`;
+      updatePageIndicator();
       showStatus('New page created');
     }
 
@@ -1127,6 +1176,8 @@
       if (t === 'clear board' || t === 'erase board') { clearBoard(); return null; }
       if (t === 'undo') { undo(); return null; }
       if (t === 'new page') { newPage(); return null; }
+      if (t === 'next page') { nextPage(); return null; }
+      if (t === 'previous page') { prevPage(); return null; }
       if (t.startsWith('color ')) {
         const c = t.replace('color ', '');
         const map = { red: '#ff6b6b', blue: '#6bb5ff', green: '#6bffb8', yellow: '#ffd166', amber: '#ffd166', purple: '#c96bff', orange: '#ff9f43', white: '#f0f0e8', black: '#1a1a2e' };
